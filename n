@@ -1,0 +1,1 @@
+Added plotting for 1d arrays
