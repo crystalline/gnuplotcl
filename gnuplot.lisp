@@ -21,6 +21,10 @@
     #+sbcl (sb-ext:run-program cmd args :wait nil :input :stream :output :stream :error :output)
     #+lispworks (system:run-shell-command full-cmd :wait nil :input :stream :output :stream :error-output :output)))
 
+(defun exec-shell-line (line)
+  (let ((p (run-program "/bin/bash" (list "-c" line))))
+            (read-line (process-output p))))
+
 (defun process-close (proc)
   #+sbcl (sb-ext:process-close proc)
   #+lispworks (process-kill proc))
@@ -241,9 +245,16 @@ Examples:
 				     (if (and (process-p proc) (eql (process-status proc) :running))
 					 (lambda ())
 					 (lambda ()
-					   (setf proc
-						 (run-program gp-command
-							      gp-options))
+                       ;Check if gp-command points to existing file, try to find gnuplot path otherwise
+                       (when (not (probe-file gp-command))
+                           (let ((newpath (exec-shell-line "which gnuplot")))
+                             (format t "*gp-command* ~s doesn't point to existing file, replacing it with ~s"
+                                     gp-command newpath)
+                             (setf *gp-command* newpath)
+                             (setf gp-command newpath)))
+                       (setf proc
+                             (run-program gp-command
+                                          gp-options))
 					   (force-output (process-input proc)))))
 				    ;; quit-gp
 				    ((eql 'quit-gp ,selector)
